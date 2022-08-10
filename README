@@ -60,44 +60,6 @@ db.policies_normalized.insertOne(
  }
 )
 
-A Sample Mongosh query using $lookup aggregation to join policy and insured collection (effectively inner join from policies to insureds):
-db.policies_normalized.aggregate( [
-   {
-   $lookup:
-     {
-       from: "insureds",
-       localField: "insured_id",
-       foreignField: "_id",
-       as: "insured"
-     }
-   }
-  ] 
-)
-
-Giving results:
-test> db.policies_normalized.aggregate([ { $lookup: { from: "insureds", localField: "insured_id", foreignField: "_id", as: "insured" } }])
-[
-  {
-    _id: ObjectId("62f3babe9d2ea7cff78091db"),
-    policyNumber: 'pol001',
-    faceAmount: 100000,
-    insured_id: "62f3d2b99d2ea7cff78091dc",
-    insured: [
-      {
-        _id: ObjectId("62f3d2b99d2ea7cff78091dc"),
-        ssn: '111-11-1111',
-        name: 'joe insured',
-        age: 34,
-        streetAddress: '2121 Young Street',
-        city: 'Dallas',
-        state: 'Texas',
-        zipCode: '75201-1001'
-      }
-    ]
-  }
-]
-
-
 Project notes:
 To build:	mvn package
 To run:		java -jar rest-mongodb2-normalized-0.0.1-SNAPSHOT.jar com.example.RestServiceApplication
