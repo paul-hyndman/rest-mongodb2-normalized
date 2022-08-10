@@ -1,0 +1,139 @@
+A project building on https://github.com/paul-hyndman/rest-mongodb1
+Since an insured can be present on >1 policies, the project was refactored to remove duplicate insured data 
+and embed an insured ID reference in a Policy.
+There is no concept of Referential Integrity so lifecycle of Insureds collection must be programmatically managed.
+
+Required software:
+ - Mongosh
+ - Mongodb (see Mongo for downloads.  For simplicity just unzip installs and modify PATH when using Windows)
+ - Postman or CURL for testing
+ - Java 8+
+ - Maven
+
+1. Using Mongosh, create base collection for insureds
+db.createCollection("insureds")
+
+2. Using Mongosh, insert one row to define fields for insured
+db.insureds.insertOne(
+ {
+  "ssn" : "111-11-1111",
+  "name" : "joe insured",
+  "age" : 34,
+  "streetAddress" : "2121 Young Street",
+  "city" : "Dallas",
+  "state" : "Texas",
+  "zipCode" : "75201-1001"
+  }
+)
+For example, this gives ID of "62f3d2b99d2ea7cff78091dc" but your values will differ.
+To find by _id, issue Mongosh query: 
+  db.insureds.find({"_id" : ObjectId("62f3d2b99d2ea7cff78091dc")})
+Which produces:
+[
+  {
+    _id: ObjectId("62f3d2b99d2ea7cff78091dc"),
+    ssn: '111-11-1111',
+    name: 'joe insured',
+    age: 34,
+    streetAddress: '2121 Young Street',
+    city: 'Dallas',
+    state: 'Texas',
+    zipCode: '75201-1001'
+  }
+]
+
+3. Using Mongosh, create unique index on natural key for Insureds collection
+db.insureds.createIndex( { "ssn": 1 }, { unique: true } )
+
+4. Using Mongosh, create base collection for policies
+db.createCollection("policies_normalized")
+
+5. Using Mongosh, create unique index on natural key for Policies collection
+db.policies.createIndex( { "policyNumber": 1 }, { unique: true } )
+
+6. Using Mongosh, insert one row to define fields for policy:
+db.policies_normalized.insertOne(
+ {
+  "policyNumber": "pol001",
+  "faceAmount" : 100000,
+  "insured_id" :  "62f3d2b99d2ea7cff78091dc"
+ }
+)
+
+A Sample Mongosh query using $lookup aggregation to join policy and insured collection (effectively inner join from policies to insureds):
+db.policies_normalized.aggregate( [
+   {
+   $lookup:
+     {
+       from: "insureds",
+       localField: "insured_id",
+       foreignField: "_id",
+       as: "insured"
+     }
+   }
+  ] 
+)
+
+Giving results:
+test> db.policies_normalized.aggregate([ { $lookup: { from: "insureds", localField: "insured_id", foreignField: "_id", as: "insured" } }])
+[
+  {
+    _id: ObjectId("62f3babe9d2ea7cff78091db"),
+    policyNumber: 'pol001',
+    faceAmount: 100000,
+    insured_id: "62f3d2b99d2ea7cff78091dc",
+    insured: [
+      {
+        _id: ObjectId("62f3d2b99d2ea7cff78091dc"),
+        ssn: '111-11-1111',
+        name: 'joe insured',
+        age: 34,
+        streetAddress: '2121 Young Street',
+        city: 'Dallas',
+        state: 'Texas',
+        zipCode: '75201-1001'
+      }
+    ]
+  }
+]
+
+
+Project notes:
+To build:	mvn package
+To run:		java -jar rest-mongodb2-normalized-0.0.1-SNAPSHOT.jar com.example.RestServiceApplication
+
+URL:  http://localhost:8080/policy
+Post example payload for new policy with existing insured:
+{
+  "policyNumber": "pol002",
+  "faceAmount": 100000,
+  "insured" :
+    {
+      "ssn": "111-11-1111",
+      "name": "joe insured",
+      "age": 34,
+      "streetAddress": "2121 Young Street",
+      "city": "Dallas",
+      "state": "Texas",
+      "zipCode": "75201-1001"
+    }
+}
+
+Post example payload for new policy with new insured:
+{
+  "policyNumber": "pol003",
+  "faceAmount": 100000,
+  "insured" :
+    {
+      "ssn": "111-11-1112",
+      "name": "jane insured",
+      "age": 24,
+      "streetAddress": "2121 Young Street",
+      "city": "Dallas",
+      "state": "Texas",
+      "zipCode": "75201-1001"
+    }
+}
+
+Get query example:
+http://localhost:8080/policy/pol001
