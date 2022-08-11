@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Class finds known and persisted Insured, and if not present then creates a known entity
+ * Class finds known and persisted Insured, and if not present then creates a known entity.
+ * A production system would probably integrate with a 3rd party service for KYC details, but
+ * this is a simplified example which encapsulates entity identification and persistence.
  */
 @Component("mongoDbInsuredLookup")
 public class KnowYourCustomer {
